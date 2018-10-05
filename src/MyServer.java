@@ -1,5 +1,6 @@
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Scanner;
 import java.io.IOException;
@@ -45,13 +46,22 @@ public class MyServer {
             i++;
         }
         fileScanner.close();
-        // TODO (Zhiben Zhu): add serverSocket
+
+        final ServerSocket serverSock;
+        try
+        {
+            serverSock = new ServerSocket(myPort);
+        }
+        catch(Exception e) {
+            System.err.println("Error: " + e.getMessage());
+            e.printStackTrace(System.err);
+        }
         Scanner scanner = new Scanner(System.in);
         System.out.println("Enter to connect to other servers...");
         scanner.nextLine();
         connectOtherSevers(otherServers);
 
-
+        
     }
 
     private void connectOtherSevers(List<String[]> otherServers) {
