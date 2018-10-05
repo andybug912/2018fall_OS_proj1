@@ -1,14 +1,17 @@
+import java.util.Scanner;
+import java.io.IOException;
 import java.io.File;
-import java.io.FileReader;
 import java.util.*;
+
 
 public class MyServer {
     private int myIndex;
     private int totalNumOfServers;
     private int myPort;
 
-    public MyServer(int port) {
-
+    public MyServer(int totalNumOfServers, int myIndex) {
+        this.myIndex=myIndex;
+        this.totalNumOfServers=totalNumOfServers;
     }
 
     public void start() {
@@ -37,14 +40,20 @@ public class MyServer {
             i++;
         }
         // TODO (Zhiben Zhu): add serverSocket
-
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException{
         Scanner scanner = new Scanner(System.in);
-        System.out.println("Input server port:");
-        String port = scanner.nextLine();
-        MyServer server = new MyServer(Integer.parseInt(port));
+        System.out.println("Input total numbers of servers:");
+        String tnfs = scanner.nextLine();
+
+        Scanner scanner2 = new Scanner(System.in);
+        System.out.println("Input myIndex:");
+        String mi = scanner2.nextLine();
+
+        MyServer server = new MyServer(Integer.parseInt(tnfs),Integer.parseInt(mi));
         server.start();
     }
+
+
 }
