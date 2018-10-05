@@ -1,12 +1,16 @@
 import java.util.Scanner;
 
 public class MyServer {
+    private int myIndex;
+    private int totalNumOfServers;
+
     public MyServer(int port) {
 
     }
 
     public void start() {
-        
+        String serverInfo = "serverlist.txt";
+
     }
 
     public static void main(String[] args) {
