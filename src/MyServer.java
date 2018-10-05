@@ -8,7 +8,7 @@ public class MyServer {
     private int myPort;
 
     public MyServer(int port) {
-        
+
     }
 
     public void start() {
