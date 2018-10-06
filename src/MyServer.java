@@ -27,7 +27,7 @@ public class MyServer {
         File file = new File(serverInfoFile);
         Scanner fileScanner;
         try {
-            fileScanner = new Scanner(file);
+            fileScanner = new Scanner(file);    //read the file
         }
         catch (Exception e) {
             System.out.println(e.getMessage());
@@ -38,7 +38,7 @@ public class MyServer {
         while (fileScanner.hasNext() && i < this.totalNumOfServers) {
             String[] serverInfo = fileScanner.nextLine().split(" ");
             if (i == this.myIndex) {
-                this.myPort = Integer.parseInt(serverInfo[1]);
+                this.myPort = Integer.parseInt(serverInfo[1]);      //find myPort according to myIndex
             }
             else {
                 otherServers.add(serverInfo);
@@ -47,6 +47,9 @@ public class MyServer {
         }
         fileScanner.close();
 
+        //Client Thread starts
+        ClientThread clientThread = new ClientThread(this.outputStreams, this.inputStreams, otherServers);
+        clientThread.start();
         final ServerSocket serverSock;
         try
         {
@@ -55,13 +58,63 @@ public class MyServer {
         catch(Exception e) {
             System.err.println("Error: " + e.getMessage());
             e.printStackTrace(System.err);
+            return;
         }
+
+        while (true) {
+            try {
+                Socket sock = serverSock.accept();      //listen
+                ObjectOutputStream output = new ObjectOutputStream(sock.getOutputStream());
+                ObjectInputStream input = new ObjectInputStream(sock.getInputStream());
+                String result = (String) input.readObject();
+                System.out.println(result);             //print the input from other servers
+            }
+            catch (Exception e) {
+                System.err.println("Error: " + e.getMessage());
+                e.printStackTrace(System.err);
+                return;
+            }
+        }
+    }
+
+
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Input total numbers of servers:");
+        String tnfs = scanner.nextLine();
+        System.out.println("Input myIndex:");
+        String mi = scanner.nextLine();
+
+        MyServer server = new MyServer(Integer.parseInt(tnfs),Integer.parseInt(mi));
+        server.start();
+    }
+}
+
+class ClientThread extends Thread {
+    private List<ObjectOutputStream> outputStreams;
+    private List<ObjectInputStream> inputStreams;
+    private List<String[]> otherServers;
+
+    public ClientThread(List<ObjectOutputStream> outputStreams, List<ObjectInputStream> inputStreams, List<String[]> otherServers) {
+        this.outputStreams = outputStreams;
+        this.inputStreams = inputStreams;
+        this.otherServers = otherServers;
+    }
+
+    public void run(){
         Scanner scanner = new Scanner(System.in);
         System.out.println("Enter to connect to other servers...");
         scanner.nextLine();
-        connectOtherSevers(otherServers);
+        connectOtherSevers(this.otherServers);
 
-        
+        try {
+            this.outputStreams.get(0).writeObject(new String("111"));       //output to other servers
+        }
+        catch (Exception e) {
+            System.err.println("Failed to output" + "\nError: " + e.getMessage());
+            e.printStackTrace(System.err);
+        }
     }
 
     private void connectOtherSevers(List<String[]> otherServers) {
@@ -82,19 +135,4 @@ public class MyServer {
             }
         }
     }
-
-    public static void main(String[] args) throws IOException{
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Input total numbers of servers:");
-        String tnfs = scanner.nextLine();
-
-        Scanner scanner2 = new Scanner(System.in);
-        System.out.println("Input myIndex:");
-        String mi = scanner2.nextLine();
-
-        MyServer server = new MyServer(Integer.parseInt(tnfs),Integer.parseInt(mi));
-        server.start();
-    }
-
-
 }
