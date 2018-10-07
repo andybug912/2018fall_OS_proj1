@@ -47,7 +47,7 @@ public class MyServer {
         }
         fileScanner.close();
 
-        //Client Thread starts
+        //Client Thread starts, for connecting to other servers
         ClientThread clientThread = new ClientThread(this.outputStreams, this.inputStreams, otherServers);
         clientThread.start();
         final ServerSocket serverSock;
@@ -82,11 +82,11 @@ public class MyServer {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         System.out.println("Input total numbers of servers:");
-        String tnfs = scanner.nextLine();
+        String totalNumOfServers = scanner.nextLine();
         System.out.println("Input myIndex:");
-        String mi = scanner.nextLine();
+        String myIndex = scanner.nextLine();
 
-        MyServer server = new MyServer(Integer.parseInt(tnfs),Integer.parseInt(mi));
+        MyServer server = new MyServer(Integer.parseInt(totalNumOfServers),Integer.parseInt(myIndex));
         server.start();
     }
 }
@@ -109,7 +109,7 @@ class ClientThread extends Thread {
         connectOtherSevers(this.otherServers);
 
         try {
-            this.outputStreams.get(0).writeObject(new String("111"));       //output to other servers
+            this.outputStreams.get(0).writeObject(new String("111"));       // testing, output to other servers
         }
         catch (Exception e) {
             System.err.println("Failed to output" + "\nError: " + e.getMessage());
