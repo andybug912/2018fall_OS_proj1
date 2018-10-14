@@ -6,7 +6,6 @@ public class Request implements Serializable {
     private int clientID;
     private boolean isRead;
     private int newNumber;
-    private int numOfServerReplies;
 
     public Request(int requestID, int serverID, int clientID, boolean isRead, int newNumber) {
         this.requestID = requestID;
@@ -43,11 +42,4 @@ public class Request implements Serializable {
         return newNumber;
     }
 
-    public int getNumOfServerReplies() {
-        return numOfServerReplies;
-    }
-
-    public void setNumOfServerReplies(int numOfServerReplies) {
-        this.numOfServerReplies = numOfServerReplies;
-    }
 }

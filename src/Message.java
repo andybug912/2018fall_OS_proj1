@@ -4,6 +4,7 @@ public class Message implements Serializable {
     private String message;
     private Request request;
     private int timeStamp;
+    private int numOfServerReplies;
 
     public Message(String msg) {
         this.message = msg;
@@ -17,6 +18,10 @@ public class Message implements Serializable {
     public Message(String msg, Request request, int timeStamp) {
         this.message = msg;
         this.request = request;
+        this.timeStamp = timeStamp;
+    }
+    public Message(String msg,int timeStamp){
+        this.message = msg;
         this.timeStamp = timeStamp;
     }
 
@@ -38,5 +43,13 @@ public class Message implements Serializable {
 
     public void setTimeStamp(int timeStamp) {
         this.timeStamp = timeStamp;
+    }
+
+    public int getNumOfServerReplies() {
+        return numOfServerReplies;
+    }
+
+    public void incrementNumOfServerReplies() {
+        this.numOfServerReplies++;
     }
 }
