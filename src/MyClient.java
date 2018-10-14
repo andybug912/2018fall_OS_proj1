@@ -51,7 +51,7 @@ public class MyClient {
         Scanner scanner = new Scanner(System.in);
         while (true) {
             try {
-                System.out.println("What do you want to say:");
+                System.out.println("Enter to continue...");
                 scanner.nextLine();
                 Message message = new Message("REQUEST", new Request(this.requestID++, this.serverIndex, 0, true));
                 output.writeObject(message);

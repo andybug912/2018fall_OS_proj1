@@ -12,7 +12,7 @@ public class MyServer {
     private int totalNumOfServers;
     private int myPort;
     private List<String[]> otherServers;
-    private String serverInfoFile = "server_list.txt";
+    final private String serverInfoFile = "server_list.txt";
 
     public MyServer(int totalNumOfServers, int myIndex) {
         this.myIndex=myIndex;
@@ -21,6 +21,7 @@ public class MyServer {
     }
 
     public void start() {
+        // **** read server name & port from file ****
         File file = new File(this.serverInfoFile);
         Scanner fileScanner;
         try {
@@ -42,6 +43,8 @@ public class MyServer {
             i++;
         }
         fileScanner.close();
+
+        // **** setup server socket ****
         final ServerSocket serverSock;
         try
         {
@@ -53,12 +56,12 @@ public class MyServer {
             return;
         }
 
+        // **** listening to incoming messages ****
         while (true) {
             try {
                 Socket socket = serverSock.accept();      //listen
                 ServerThread serverThread = new ServerThread(socket, this);
                 serverThread.run();
-
             }
             catch (Exception e) {
                 System.err.println("Error: " + e.getMessage());
@@ -108,11 +111,11 @@ class ServerThread extends Thread {
             while (true) {
                 output.reset();
                 Message msg = (Message)input.readObject();
-                if (msg.getMessage().equals("REQUEST")) {
+                if (msg.getMessage().equals("REQUEST")) {   // receives a request from client
                     Request request = msg.getRequest();
                     msg.setTimeStamp(1000 + this.server.getMyIndex());
                     msg.setMessage("SERVER");
-                    for (int i = 0; i < this.server.getTotalNumOfServers() - 1; i++) {
+                    for (int i = 0; i < this.server.getTotalNumOfServers() - 1; i++) {  // spreads word to all other servers about this new request
                         String[] otherServer = this.server.getOtherServers().get(i);
                         Socket sock = new Socket(otherServer[0], Integer.parseInt(otherServer[1]));
 
@@ -121,19 +124,20 @@ class ServerThread extends Thread {
                         out.writeObject(msg);
                         Message response = (Message) in.readObject();
                         System.out.println("Got response from server " + response.getTimeStamp());
-                        Message disconnect = new Message("DISCONNECT");
+
+                        Message disconnect = new Message("DISCONNECT");     // disconnect every time to avoid socket bugs
                         out.writeObject(disconnect);
                     }
                     msg.setMessage("OK");
                     output.writeObject(msg);
                 }
-                else if (msg.getMessage().equals("SERVER")) {
+                else if (msg.getMessage().equals("SERVER")) {   // receive message from another server
                     Request request = msg.getRequest();
                     System.out.println("Got from client from server " + msg.getTimeStamp());
                     Message response = new Message(null, null, 1000 + this.server.getMyIndex());
                     output.writeObject(response);
                 }
-                else if (msg.getMessage().equals("DISCONNECT")) {
+                else if (msg.getMessage().equals("DISCONNECT")) {   // receive a disconnect message
                     this.socket.close();
                     break;
                 }
