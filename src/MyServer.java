@@ -1,3 +1,5 @@
+import org.omg.CORBA.portable.OutputStream;
+
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
@@ -14,13 +16,17 @@ public class MyServer {
     private int timeStamp;
     volatile static private Queue<Message> LamportQueue;
     volatile static private Queue<Message> messageBuffer;
-    private List<String[]> otherServers;
+    volatile static public List<String[]> otherServers;
+    volatile static public List<ObjectOutputStream> outputs;
+    volatile static public List<ObjectInputStream> inputs;
     final private String serverInfoFile = "server_list.txt";
 
     public MyServer(int totalNumOfServers, int myIndex) {
         this.myIndex=myIndex;
         this.totalNumOfServers=totalNumOfServers;
         this.otherServers = new ArrayList<>();
+        this.outputs = new ArrayList<>();
+        this.inputs = new ArrayList<>();
         this.timeStamp=0;
         LamportQueue=new PriorityQueue<>(Comparator.comparingInt(Message::getTimeStamp));
         messageBuffer = new LinkedList<>();
@@ -44,7 +50,7 @@ public class MyServer {
                 this.myPort = Integer.parseInt(serverInfo[1]);      //find myPort according to myIndex
             }
             else {
-                this.otherServers.add(serverInfo);
+                otherServers.add(serverInfo);
             }
             i++;
         }
@@ -65,12 +71,15 @@ public class MyServer {
         MessageThread messageThread = new MessageThread(this);
         messageThread.start();
 
+        ConnectOtherServers connectOtherServers = new ConnectOtherServers(this);
+        connectOtherServers.start();
+
         // **** listening to incoming messages ****
         while (true) {
             try {
                 Socket socket = serverSock.accept();      //listen
                 ServerThread serverThread = new ServerThread(socket, this);
-                serverThread.run();
+                serverThread.start();
             }
             catch (Exception e) {
                 System.err.println("Error: " + e.getMessage());
@@ -90,10 +99,6 @@ public class MyServer {
 
     public int getMyIndex() {
         return myIndex;
-    }
-
-    List<String[]> getOtherServers() {
-        return otherServers;
     }
 
     int getTotalNumOfServers() {
@@ -124,6 +129,32 @@ public class MyServer {
     }
 }
 
+class ConnectOtherServers extends Thread {
+    private MyServer server;
+
+    public ConnectOtherServers(MyServer server) {
+        this.server = server;
+    }
+
+    public void run() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Enter to connect to other servers...");
+        scanner.nextLine();
+        for (int j = 0; j < this.server.getTotalNumOfServers() - 1; j++) {
+            try {
+                Socket socket = new Socket(this.server.otherServers.get(j)[0], Integer.parseInt(this.server.otherServers.get(j)[1]));
+                this.server.outputs.add(new ObjectOutputStream(socket.getOutputStream()));
+                this.server.inputs.add(new ObjectInputStream(socket.getInputStream()));
+                System.out.println("connect to a server " + this.server.otherServers.get(j)[0] + " on port " + Integer.parseInt(this.server.otherServers.get(j)[1]));
+            }
+            catch (Exception e) {
+                System.err.println("Error: " + e.getMessage());
+                e.printStackTrace(System.err);
+            }
+        }
+    }
+}
+
 class MessageThread extends Thread{
     private MyServer server;
     MessageThread(MyServer server){
@@ -143,17 +174,10 @@ class MessageThread extends Thread{
                 this.server.getLamportQueue().offer(message);
                 try {
                     for (int i = 0; i < this.server.getTotalNumOfServers() - 1; i++) {  // spreads word to all other servers about this new request
-                        String[] otherServer = this.server.getOtherServers().get(i);
-                        Socket sock = new Socket(otherServer[0], Integer.parseInt(otherServer[1]));
-
-                        ObjectOutputStream out = new ObjectOutputStream(sock.getOutputStream());
-                        ObjectInputStream in = new ObjectInputStream(sock.getInputStream());
+                        ObjectOutputStream out = this.server.outputs.get(i);
                         this.server.incrementTimeStamp();
                         Message tempMsg = new Message(message.getMessageID(), "ENQUEUE", message.getRequest(), this.server.getTimeStamp());
                         out.writeObject(tempMsg);
-
-                        Message disconnect = new Message("DISCONNECT");     // disconnect every time to avoid socket bugs
-                        out.writeObject(disconnect);
                     }
                 }
                 catch (Exception e) {
@@ -166,18 +190,11 @@ class MessageThread extends Thread{
                 this.server.updateTimeStamp(message.getTimeStamp());
                 int incomingServerIndex = message.getRequest().getServerID();
                 this.server.getLamportQueue().offer(message);
-                String[] otherServer = this.server.getOtherServers().get(incomingServerIndex);
                 try {
-                    Socket sock = new Socket(otherServer[0], Integer.parseInt(otherServer[1]));
-
-                    ObjectOutputStream out = new ObjectOutputStream(sock.getOutputStream());
-                    ObjectInputStream in = new ObjectInputStream(sock.getInputStream());
+                    ObjectOutputStream out = this.server.outputs.get(incomingServerIndex);
                     this.server.incrementTimeStamp();
                     Message tempMsg = new Message(message.getMessageID(), "ENQUEUEREPLY", message.getRequest(), this.server.getTimeStamp());
                     out.writeObject(tempMsg);
-
-                    Message disconnect = new Message("DISCONNECT");     // disconnect every time to avoid socket bugs
-                    out.writeObject(disconnect);
                 }
                 catch (Exception e) {
                     System.err.println("Error: " + e.getMessage());
@@ -190,6 +207,7 @@ class MessageThread extends Thread{
                 for (Message msg: this.server.getLamportQueue()) {
                     if (msg.getMessageID() == message.getMessageID()) {
                         msg.incrementNumOfServerReplies();
+                        System.out.println("found msg in enqueue reply");
                         break;
                     }
                 }
@@ -200,22 +218,16 @@ class MessageThread extends Thread{
                 for (Message msg: this.server.getLamportQueue()) {
                     if (msg.getMessageID() == message.getMessageID()) {
                         this.server.getLamportQueue().remove(msg);
+                        System.out.println("found msg in client release");
                         break;
                     }
                 }
                 try {
                     for (int i = 0; i < this.server.getTotalNumOfServers() - 1; i++) {  // spreads word to all other servers about this new request
-                        String[] otherServer = this.server.getOtherServers().get(i);
-                        Socket sock = new Socket(otherServer[0], Integer.parseInt(otherServer[1]));
-
-                        ObjectOutputStream out = new ObjectOutputStream(sock.getOutputStream());
-                        ObjectInputStream in = new ObjectInputStream(sock.getInputStream());
+                        ObjectOutputStream out = this.server.outputs.get(i);
                         this.server.incrementTimeStamp();
                         serverRelease.setTimeStamp(this.server.getTimeStamp());
                         out.writeObject(serverRelease);
-
-                        Message disconnect = new Message("DISCONNECT");     // disconnect every time to avoid socket bugs
-                        out.writeObject(disconnect);
                     }
                 }
                 catch (Exception e) {
@@ -229,6 +241,7 @@ class MessageThread extends Thread{
                 for (Message msg: this.server.getLamportQueue()) {
                     if (msg.getMessageID() == message.getMessageID()) {
                         this.server.getLamportQueue().remove(msg);
+                        System.out.println("found msg in server release");
                         break;
                     }
                 }
@@ -251,20 +264,34 @@ class ServerThread extends Thread {
             final ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
             final ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
             while (true) {
-//                output.reset();
                 Message msg = (Message)input.readObject();
                 if (msg.getMessage().equals("REQUEST")) {   // receives a request from client
                     this.server.getMessageBuffer().offer(msg);
-                    while(!(this.server.getLamportQueue().size() > 0 &&
-                            this.server.getLamportQueue().peek().getMessageID() == msg.getMessageID()&&
-                            this.server.getTotalNumOfServers() - 1 == this.server.getLamportQueue().peek().getNumOfServerReplies())){
-                        // do nothing
+                    if (!msg.getRequest().isRead()) {   // a write request
+                        while(!(this.server.getLamportQueue().size() > 0 &&
+                                this.server.getLamportQueue().peek().getMessageID() == msg.getMessageID()&&
+                                this.server.getTotalNumOfServers() - 1 == this.server.getLamportQueue().peek().getNumOfServerReplies())){
+                            // do nothing, wait for the write request to be the head of LamportQueue
+                            // and all replies from other servers have been received
+                        }
+                    }
+                    else {  // a read request
+                        boolean isApproved = false;
+                        while (!isApproved) {
+                            for (Message temp: this.server.getLamportQueue()) {
+                                if (!temp.getRequest().isRead()) {  // if there is write request ahead of it, cannot be approved to read
+                                    break;
+                                }
+                                if (temp.getMessageID() == msg.getMessageID()) {
+                                    if (this.server.getTotalNumOfServers() - 1 == temp.getNumOfServerReplies()) {
+                                        isApproved = true;
+                                    }
+                                    break;
+                                }
+                            }
+                        }
                     }
                     output.writeObject(new Message("OK"));
-                }
-                else if (msg.getMessage().equals("DISCONNECT")) {   // receive a disconnect message
-                    this.socket.close();
-                    break;
                 }
                 else if (msg.getMessage().equals("CRELEASE") ||
                          msg.getMessage().equals("SRELEASE") ||

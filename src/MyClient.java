@@ -51,10 +51,10 @@ public class MyClient {
         Scanner scanner = new Scanner(System.in);
         while (true) {
             try {
-                System.out.println("Enter to continue...");
+                System.out.println("Enter to send request...");
                 scanner.nextLine();
                 Request request = new Request(this.serverIndex, 0, true);
-                Message message = new Message(this.messageID++, "REQUEST", request);
+                Message message = new Message(this.messageID, "REQUEST", request);
                 output.writeObject(message);
                 Message response = (Message) input.readObject();
                 if (response.getMessage().equals("OK")) {
@@ -64,7 +64,7 @@ public class MyClient {
                     else {
                         // TODO: write
                     }
-                    System.out.println("Enter to continue...");
+                    System.out.println("Enter to send release...");
                     scanner.nextLine();
                     message = new Message(this.messageID++, "CRELEASE", request);
                     output.writeObject(message);
