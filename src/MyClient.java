@@ -7,14 +7,14 @@ import java.util.Scanner;
 public class MyClient {
     private String serverInfoFile = "server_list.txt";
     private int serverIndex;
-    private int requestID;
+    private int messageID;
     private Socket socket;
     private ObjectOutputStream output;
     private ObjectInputStream input;
 
     public MyClient(int serverIndex, int initialRequestID) {
         this.serverIndex = serverIndex;
-        this.requestID = initialRequestID;
+        this.messageID = initialRequestID;
     }
 
     public void start() {
@@ -53,10 +53,22 @@ public class MyClient {
             try {
                 System.out.println("Enter to continue...");
                 scanner.nextLine();
-                Message message = new Message("REQUEST", new Request(this.requestID++, this.serverIndex, 0, true));
+                Request request = new Request(this.serverIndex, 0, true);
+                Message message = new Message(this.messageID++, "REQUEST", request);
                 output.writeObject(message);
                 Message response = (Message) input.readObject();
-                System.out.println(response.getMessage());
+                if (response.getMessage().equals("OK")) {
+                    if (message.getRequest().isRead()) {
+                        // TODO: read
+                    }
+                    else {
+                        // TODO: write
+                    }
+                    System.out.println("Enter to continue...");
+                    scanner.nextLine();
+                    message = new Message(this.messageID++, "CRELEASE", request);
+                    output.writeObject(message);
+                }
             }
             catch (Exception e) {
                 System.err.println("Error: " + e.getMessage());
@@ -70,9 +82,9 @@ public class MyClient {
         System.out.println("Input your daddy server:");
         int daddy = Integer.parseInt(scanner.nextLine());
 
-        System.out.println("Input an initial request ID:");
-        int initialRequestID = Integer.parseInt(scanner.nextLine());
-        MyClient client = new MyClient(daddy, initialRequestID);
+        System.out.println("Input an initial message ID:");
+        int initialMessageID = Integer.parseInt(scanner.nextLine());
+        MyClient client = new MyClient(daddy, initialMessageID);
         client.start();
     }
 }
