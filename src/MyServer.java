@@ -82,8 +82,8 @@ public class MyServer {
         MessageThread messageThread = new MessageThread(this);
         messageThread.start();
 
-        LamportThread lamportThread = new LamportThread(this);
-        lamportThread.start();
+//        LamportThread lamportThread = new LamportThread(this);
+//        lamportThread.start();
 
         ConnectOtherServers connectOtherServers = new ConnectOtherServers(this);
         connectOtherServers.start();
@@ -179,6 +179,73 @@ class MessageThread extends Thread{
 
     public void run() {
         while(true){
+            if (this.server.getLamportQueue().size() != 0) {
+                Message message = this.server.getLamportQueue().peek();
+                if (message != null) {
+                    if (message.getRequest().isRead() && !message.isReplySent() &&
+                            message.getRequest().getServerID() == this.server.getMyIndex() &&
+                            message.getNumOfServerReplies() == this.server.getTotalNumOfServers() - 1
+                            ) {
+                        try {
+                            File file = new File(this.server.sharedFile);
+                            Scanner fileScanner = new Scanner(file);
+                            String lastLine = "";
+                            while (fileScanner.hasNext()) {
+                                lastLine = fileScanner.nextLine();
+                            }
+                            this.server.clientOutputs.get(message.getRequest().getClientID()).writeObject(new Message("OK " + lastLine));
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        message.setReplySent(true);
+                    }
+                    else if (!message.getRequest().isRead() && !message.isReplySent() &&
+                            message.getRequest().getServerID() == this.server.getMyIndex() &&
+                            message.getNumOfServerReplies() == this.server.getTotalNumOfServers() - 1
+                            ) {
+                        String lastLine = "";
+                        Scanner fileScanner;
+                        File file = new File(this.server.sharedFile);
+                        FileOutputStream fos;
+                        BufferedWriter bw;
+                        try {
+                            fos = new FileOutputStream(file, true);
+                            bw = new BufferedWriter(new OutputStreamWriter(fos));
+                            fileScanner = new Scanner(file);    //read the file
+                        }
+                        catch (Exception e) {
+                            System.out.println(e.getMessage());
+                            return;
+                        }
+                        while (fileScanner.hasNext()) {
+                            lastLine = fileScanner.nextLine();
+                        }
+                        int newSum = message.getRequest().getNewNumber();
+                        if (!lastLine.equals("")) {
+                            int oldSum = Integer.parseInt(lastLine.split(":")[1]);
+                            newSum += oldSum;
+                        }
+                        try {
+                            Thread.sleep(500);
+                            bw.write(String.valueOf("\n" + this.server.getTimeStamp()) + ":");
+                            Thread.sleep(500);
+                            bw.write(String.valueOf(newSum));fileScanner.close();
+                            bw.close();
+                            fos.close();
+                        }
+                        catch (Exception e) {
+                            System.out.println(e.getMessage());
+                            return;
+                        }
+                        try {
+                            this.server.clientOutputs.get(message.getRequest().getClientID()).writeObject(new Message("OK"));
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        message.setReplySent(true);
+                    }
+                }
+            }
             if(this.server.getMessageBuffer().size() == 0) {
                 continue;
             }
@@ -273,83 +340,20 @@ class MessageThread extends Thread{
     }
 }
 
-class LamportThread extends Thread {
-    private MyServer server;
-
-    LamportThread(MyServer server){
-        this.server = server;
-    }
-
-    public void run() {
-        while (true) {
-            if (this.server.getLamportQueue().size() == 0) continue;
-            Message message = this.server.getLamportQueue().peek();
-            if (message == null) continue;
-            if (message.getRequest().isRead() && !message.isReplySent() &&
-                message.getRequest().getServerID() == this.server.getMyIndex() &&
-                message.getNumOfServerReplies() == this.server.getTotalNumOfServers() - 1
-                ) {
-                try {
-                    File file = new File(this.server.sharedFile);
-                    Scanner fileScanner = new Scanner(file);
-                    String lastLine = "";
-                    while (fileScanner.hasNext()) {
-                        lastLine = fileScanner.nextLine();
-                    }
-                    this.server.clientOutputs.get(message.getRequest().getClientID()).writeObject(new Message("OK " + lastLine));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                message.setReplySent(true);
-            }
-            else if (!message.getRequest().isRead() && !message.isReplySent() &&
-                    message.getRequest().getServerID() == this.server.getMyIndex() &&
-                    message.getNumOfServerReplies() == this.server.getTotalNumOfServers() - 1
-                    ) {
-                String lastLine = "";
-                Scanner fileScanner;
-                File file = new File(this.server.sharedFile);
-                FileOutputStream fos;
-                BufferedWriter bw;
-                try {
-                    fos = new FileOutputStream(file, true);
-                    bw = new BufferedWriter(new OutputStreamWriter(fos));
-                    fileScanner = new Scanner(file);    //read the file
-                }
-                catch (Exception e) {
-                    System.out.println(e.getMessage());
-                    return;
-                }
-                while (fileScanner.hasNext()) {
-                    lastLine = fileScanner.nextLine();
-                }
-                int newSum = message.getRequest().getNewNumber();
-                if (!lastLine.equals("")) {
-                    int oldSum = Integer.parseInt(lastLine.split(":")[1]);
-                    newSum += oldSum;
-                }
-                try {
-                    Thread.sleep(500);
-                    bw.write(String.valueOf("\n" + this.server.getTimeStamp()) + ":");
-                    Thread.sleep(500);
-                    bw.write(String.valueOf(newSum));fileScanner.close();
-                    bw.close();
-                    fos.close();
-                }
-                catch (Exception e) {
-                    System.out.println(e.getMessage());
-                    return;
-                }
-                try {
-                    this.server.clientOutputs.get(message.getRequest().getClientID()).writeObject(new Message("OK"));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                message.setReplySent(true);
-            }
-        }
-    }
-}
+//class LamportThread extends Thread {
+//    private MyServer server;
+//
+//    LamportThread(MyServer server){
+//        this.server = server;
+//    }
+//
+//    public void run() {
+//        while (true) {
+//            if (this.server.getLamportQueue().size() == 0) continue;
+//
+//        }
+//    }
+//}
 
 class ServerThread extends Thread {
     private Socket socket;
@@ -377,6 +381,7 @@ class ServerThread extends Thread {
                          msg.getMessage().equals("SRELEASE") ||
                          msg.getMessage().equals("ENQUEUE") ||
                          msg.getMessage().equals("ENQUEUEREPLY")){
+                    Thread.sleep(100);
                     this.server.getMessageBuffer().offer(msg);
                 }
                 else if (msg.getMessage().equals("DISCONNECT")) {

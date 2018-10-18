@@ -85,7 +85,7 @@ public class MyClient {
             try {
                 Request request;
                 if (this.isRead) {
-                    if (readCount++ > 100) {
+                    if (readCount++ >= 100) {
                         break;
                     }
                     request = new Request(this.serverIndex, true);
