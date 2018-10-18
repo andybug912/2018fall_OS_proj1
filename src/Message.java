@@ -6,11 +6,13 @@ public class Message implements Serializable {
     private Request request;
     private int timeStamp;
     private int numOfServerReplies;
+    private boolean isReplySent;
 
     public Message(int messageID, String msg, Request request) {
         this.messageID = messageID;
         this.message = msg;
         this.request = request;
+        this.isReplySent = false;
     }
 
     public Message(int messageID, String msg, Request request, int timeStamp){
@@ -18,6 +20,15 @@ public class Message implements Serializable {
         this.message = msg;
         this.timeStamp = timeStamp;
         this.request = request;
+        this.isReplySent = false;
+    }
+
+    public boolean isReplySent() {
+        return isReplySent;
+    }
+
+    public void setReplySent(boolean replySent) {
+        isReplySent = replySent;
     }
 
     public Message(String msg) {
@@ -26,10 +37,6 @@ public class Message implements Serializable {
 
     public int getMessageID() {
         return messageID;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
     }
 
     public String getMessage() {
