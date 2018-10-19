@@ -1,0 +1,8 @@
+localhost 8765
+localhost 4321
+localhost 2345
+localhost 5432
+localhost 4567
+localhost 7654
+localhost 9876
+localhost 6789
