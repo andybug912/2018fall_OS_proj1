@@ -27,7 +27,7 @@ public class MyServer {
         this.clientOutputs = new HashMap<>();
         this.clientNum = 0;
         this.timeStamp=0;
-        LamportQueue=new PriorityQueue<>(Comparator.comparingInt(Message::getTimeStamp));
+        LamportQueue=new PriorityQueue<>(new LamportComparator());
         messageBuffer = new LinkedList<>();
         if (myIndex == 0) {
             File file = new File(this.sharedFile);
@@ -79,11 +79,8 @@ public class MyServer {
             return;
         }
 
-        MessageThread messageThread = new MessageThread(this);
-        messageThread.start();
-
-//        LamportThread lamportThread = new LamportThread(this);
-//        lamportThread.start();
+        LamportThread lamportThread = new LamportThread(this);
+        lamportThread.start();
 
         ConnectOtherServers connectOtherServers = new ConnectOtherServers(this);
         connectOtherServers.start();
@@ -143,6 +140,20 @@ public class MyServer {
     }
 }
 
+class LamportComparator implements Comparator<Message> {
+
+    @Override
+    public int compare(Message o1, Message o2) {
+        if (o1.getTimeStamp() != o2.getTimeStamp()) {
+            return o1.getTimeStamp() - o2.getTimeStamp();
+        }
+        else if (o1.getRequest().getServerID() != o2.getRequest().getServerID()) {
+            return o1.getRequest().getServerID() - o2.getRequest().getServerID();
+        }
+        return 0;
+    }
+}
+
 class ConnectOtherServers extends Thread {
     private MyServer server;
 
@@ -171,9 +182,9 @@ class ConnectOtherServers extends Thread {
     }
 }
 
-class MessageThread extends Thread{
+class LamportThread extends Thread{
     private MyServer server;
-    MessageThread(MyServer server){
+    LamportThread(MyServer server){
         this.server = server;
     }
 
@@ -339,21 +350,6 @@ class MessageThread extends Thread{
         }
     }
 }
-
-//class LamportThread extends Thread {
-//    private MyServer server;
-//
-//    LamportThread(MyServer server){
-//        this.server = server;
-//    }
-//
-//    public void run() {
-//        while (true) {
-//            if (this.server.getLamportQueue().size() == 0) continue;
-//
-//        }
-//    }
-//}
 
 class ServerThread extends Thread {
     private Socket socket;
